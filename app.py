@@ -5,7 +5,7 @@ from rq_dashboard.cli import add_basic_auth
 
 app = Flask(__name__)
 app.config.from_object(rq_dashboard.default_settings)
-app.config["RQ_DASHBOARD_REDIS_URL"] = os.environ.get("RQ_DASHBOARD_REDIS_URL")
+app.config["RQ_DASHBOARD_REDIS_URL"] = os.environ.get("REDISTOGO_URL")
 
 add_basic_auth(
     blueprint=rq_dashboard.blueprint,
