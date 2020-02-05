@@ -6,11 +6,16 @@
     Provides the flask application
 """
 
+from os import path
 from flask import Flask, redirect, request
+from flask_cors import CORS
+from flask_caching import Cache
+from flask_compress import Compress
 from datetime import date
 
 import pygogo as gogo
 
+from mezmorize.utils import get_cache_config, get_cache_type
 from rq_dashboard import default_settings
 from rq_dashboard.cli import add_basic_auth
 
@@ -25,12 +30,17 @@ __email__ = "msotto@nerevu.com"
 __license__ = "MIT"
 __copyright__ = f"Copyright {date.today().year} Nerevu Group"
 
+cache = Cache()
+compress = Compress()
+cors = CORS()
 logger = gogo.Gogo(__name__, monolog=True).logger
 
 
 def create_app(config_mode=None, config_file=None):
     app = Flask(__name__)
     app.url_map.strict_slashes = False
+    cors.init_app(app)
+    compress.init_app(app)
     required_setting_missing = False
 
     @app.before_request
@@ -79,10 +89,26 @@ def create_app(config_mode=None, config_file=None):
 
     app.register_blueprint(rq, url_prefix=f"{prefix}/dashboard")
 
-    @app.route("/")
-    def root():
-        return redirect(f"{prefix}/dashboard", code=302)
 
+    if app.config.get("HEROKU") or app.config.get("DEBUG_MEMCACHE"):
+        cache_type = get_cache_type(spread=False)
+    else:
+        cache_type = "filesystem"
+
+    if config_mode not in {"Production", "Custom", "Ngrok"}:
+        app.config["ENVIRONMENT"] = "staging"
+
+    cache_config = get_cache_config(cache_type, **app.config)
+
+    ###########################################################################
+    # TODO - remove once mezmorize PR is merged
+    if cache_type == "filesystem" and not cache_config.get("CACHE_DIR"):
+        cache_config["CACHE_DIR"] = path.join(
+            path.abspath(path.dirname(__file__)), "cache"
+        )
+    ###########################################################################
+
+    cache.init_app(app, config=cache_config)
     return app
 
 
