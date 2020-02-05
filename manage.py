@@ -4,7 +4,7 @@
 
 """ A script to manage development tasks """
 from os import path as p
-from subprocess import check_call, CalledProcessError
+from subprocess import call, check_call, CalledProcessError
 from urllib.parse import urlsplit
 
 import pygogo as gogo
@@ -81,10 +81,37 @@ def lint(where, strict):
     def_where = ["app", "manage.py", "config.py"]
     extra = where.split(" ") if where else def_where
 
+    args = ["pylint", "--rcfile=tests/standard.rc", "-rn", "-fparseable", "app"]
+
     try:
         check_call(["flake8"] + extra)
+        check_call(args) if strict else None
     except CalledProcessError as e:
         exit(e.returncode)
+
+
+@manager.option("-r", "--remote", help="the heroku branch", default="staging")
+def add_keys(remote):
+    """Deploy staging app"""
+    cmd = "heroku keys:add ~/.ssh/id_rsa.pub --remote {}"
+    check_call(cmd.format(remote).split(" "))
+
+
+@manager.option("-r", "--remote", help="the heroku branch", default="staging")
+def deploy(remote):
+    """Deploy staging app"""
+    branch = "master" if remote == "production" else "features"
+    cmd = "git push origin {}"
+    check_call(cmd.format(branch).split(" "))
+
+
+@manager.command
+def require():
+    """Create requirements.txt"""
+    cmd = "pip freeze -l | grep -vxFf dev-requirements.txt "
+    cmd += "| grep -vxFf requirements.txt "
+    cmd += "> base-requirements.txt"
+    call(cmd.split(" "))
 
 
 @manager.option("-o", "--order-id", help="Order ID to add")
