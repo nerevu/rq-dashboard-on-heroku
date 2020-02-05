@@ -183,6 +183,9 @@ class Production(Config):
     SQLALCHEMY_POOL_SIZE = 3
     SQLALCHEMY_MAX_OVERFLOW = 2
 
+    if __PROD_SERVER__:
+        TALISMAN_PERMANENT = True
+
     HOST = "0.0.0.0"
 
 
