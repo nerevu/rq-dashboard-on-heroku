@@ -86,5 +86,11 @@ def lint(where, strict):
         exit(e.returncode)
 
 
+@manager.command
+def work():
+    """Run the rq-worker"""
+    call("python -u worker.py", shell=True)
+
+
 if __name__ == "__main__":
     manager.run()
