@@ -9,15 +9,15 @@ from urllib.parse import urlsplit
 
 import pygogo as gogo
 
-from flask import current_app
+from flask import current_app as app
 from flask_script import Manager
 
-import app
+from app import create_app
 
 BASEDIR = p.dirname(__file__)
 DEF_PORT = 5000
 
-manager = Manager(app.create_app)
+manager = Manager(create_app)
 manager.add_option("-m", "--cfgmode", dest="config_mode", default="Development")
 manager.add_option("-f", "--cfgfile", dest="config_file", type=p.abspath)
 manager.main = manager.run  # Needed to do `manage <command>` from the cli
@@ -43,19 +43,19 @@ def notify_or_log(ok, message):
 @manager.option("-t", "--threaded", help="Run multiple threads", action="store_true")
 def serve(port, **kwargs):
     """Runs the flask development server"""
-    with current_app.app_context():
-        kwargs["threaded"] = kwargs.get("threaded", current_app.config["PARALLEL"])
-        kwargs["debug"] = current_app.config["DEBUG"]
+    with app.app_context():
+        kwargs["threaded"] = kwargs.get("threaded", app.config["PARALLEL"])
+        kwargs["debug"] = app.config["DEBUG"]
 
-        if current_app.config.get("SERVER_NAME"):
-            parsed = urlsplit(current_app.config["SERVER_NAME"])
+        if app.config.get("SERVER_NAME"):
+            parsed = urlsplit(app.config["SERVER_NAME"])
             host, port = parsed.netloc, parsed.port or port
         else:
-            host = current_app.config["HOST"]
+            host = app.config["HOST"]
 
         kwargs.setdefault("host", host)
         kwargs.setdefault("port", port)
-        current_app.run(**kwargs)
+        app.run(**kwargs)
 
 
 runserver = serve
@@ -64,7 +64,7 @@ runserver = serve
 @manager.option("-w", "--where", help="Modules to check")
 def prettify(where):
     """Prettify code with black"""
-    def_where = ["app.py", "manage.py", "config.py"]
+    def_where = ["app", "manage.py", "config.py"]
     extra = where.split(" ") if where else def_where
 
     try:
@@ -77,7 +77,7 @@ def prettify(where):
 @manager.option("-s", "--strict", help="Check with pylint", action="store_true")
 def lint(where, strict):
     """Check style with linters"""
-    def_where = ["app.py", "manage.py", "config.py"]
+    def_where = ["app", "manage.py", "config.py"]
     extra = where.split(" ") if where else def_where
 
     try:

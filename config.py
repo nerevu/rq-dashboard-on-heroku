@@ -24,7 +24,7 @@ from pkutils import parse_module
 PARENT_DIR = p.abspath(p.dirname(__file__))
 DAYS_PER_MONTH = 30
 
-app = parse_module(p.join(PARENT_DIR, "app.py"))
+app = parse_module(p.join(PARENT_DIR, "app", "__init__.py"))
 user = getenv("USER", "user")
 db_env_list = ["DATABASE_URL", "REDIS_URL", "MEMCACHIER_SERVERS", "REDISTOGO_URL"]
 
