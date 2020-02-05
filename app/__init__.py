@@ -90,6 +90,10 @@ def create_app(config_mode=None, config_file=None):
     app.register_blueprint(api)
     app.register_blueprint(rq, url_prefix=f"{prefix}/dashboard")
 
+    if app.config.get("TALISMAN"):
+        from flask_talisman import Talisman
+
+        Talisman(app)
 
     if app.config.get("HEROKU") or app.config.get("DEBUG_MEMCACHE"):
         cache_type = get_cache_type(spread=False)
