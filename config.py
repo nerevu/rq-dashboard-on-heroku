@@ -40,6 +40,61 @@ __STAG_SERVER__ = getenv("STAGE")
 __END__ = "-stage" if __STAG_SERVER__ else ""
 __SUB_DOMAIN__ = f"{__APP_NAME__}{__END__}"
 
+__CLOZE_STAGES__ = {
+    "people": {
+        "none": "none",
+        "lead": "lead",
+        "potential": "future",
+        "active": "current",
+        "inactive": "past",
+        "lost": "out",
+    },
+    "projects": {
+        "none": "none",
+        "potential": "future",
+        "active": "current",
+        "done": "won",
+        "lost": "lost",
+    },
+}
+
+__CLOZE_ACCOUNT_MAPPINGS__ = {
+    "nerevu": {
+        # PEOPLE
+        "lead_source": "lead-source",
+        "orders_link": "orders",
+        "customer_segment": "custom7",
+        "customer_num": "",
+        # PROJECTS
+        "start": "project.start",  # same as project.created
+        "value": "value",
+        "customer_link": "customer",
+        "amount": "amount",
+        "manufacturers": "manufacturers",
+        "planned_start": "planned-start",
+        "order_num": "order",
+        "project_segment": "project4",  # order
+    },
+    "alegna": {
+        # PEOPLE
+        "lead_source": "lead-source",
+        "orders_link": "orders",
+        "customer_segment": "customer",
+        # TODO: this field isn't referenced
+        "customer_num": "customer",
+        # PROJECTS
+        "start": "project.start",  # same as project.created
+        "value": "value",
+        "customer_link": "linked-customer",
+        "amount": "win-amount",
+        "manufacturers": "manufacturer",
+        "planned_start": "",
+        "order_num": "order",
+        "project_segment": "project1",  # pricecloser order (online)
+    },
+}
+
+__CLOZE_ACCOUNT_ID__ = getenv("CLOZE_ACCOUNT_ID", "nerevu")
 
 Admin = namedtuple("Admin", ["name", "email"])
 get_path = lambda name: f"file://{p.join(PARENT_DIR, 'data', name)}"
@@ -62,11 +117,13 @@ class Config(object):
     PROD_SERVER = __PROD_SERVER__
 
     # see http://bootswatch.com/3/ for available swatches
+    FLASK_ADMIN_SWATCH = "cerulean"
     ADMIN = Admin(app.__author__, app.__email__)
     ADMINS = frozenset([ADMIN.email])
     HOST = "127.0.0.1"
 
     # Variables warnings
+    REQUIRED_SETTINGS = ["CLOZE_API_KEY", "CLOZE_EMAIL", "OPENCART_RESTADMIN_ID"]
     REQUIRED_PROD_SETTINGS = ["RQ_DASHBOARD_USERNAME", "RQ_DASHBOARD_PASSWORD"]
 
     # These don't change
@@ -77,6 +134,7 @@ class Config(object):
     SEND_FILE_MAX_AGE_DEFAULT = ROUTE_TIMEOUT
     EMPTY_TIMEOUT = ROUTE_TIMEOUT * 10
     API_URL_PREFIX = "/v1"
+    REPORT_MONTHS = 12
     DATE_FORMAT = "%Y-%m-%d"
     RQ_DASHBOARD_REDIS_URL = (
         getenv("REDIS_URL") or getenv("REDISTOGO_URL") or __DEF_REDIS_URL__
@@ -94,10 +152,37 @@ class Config(object):
     ROW_LIMIT = 32
     API_RESULTS_PER_PAGE = 32
     API_MAX_RESULTS_PER_PAGE = 256
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ECHO = False
     RQ_DASHBOARD_DEBUG = False
+
+    # Cloze variables
+    CLOZE_API_KEY = getenv("CLOZE_API_KEY")
+    CLOZE_EMAIL = getenv("CLOZE_EMAIL")
+    CLOZE_BASE_URL = "https://api.cloze.com/v1"
+    CLOZE_ACCOUNT_MAP = __CLOZE_ACCOUNT_MAPPINGS__[__CLOZE_ACCOUNT_ID__]
+    CLOZE_STAGES = __CLOZE_STAGES__
+    SHARE_TO_TEAMS = True
+
+    # OpenCart/Pricecloser variables
+    OPENCART_RESTADMIN_ID = getenv("OPENCART_RESTADMIN_ID")
+    PRICECLOSER_BASE_URL = "http://pricecloser.com/api/rest_admin"
 
 
 class Production(Config):
+    # TODO: setup nginx http://docs.gunicorn.org/en/latest/deploy.html
+    #       or waitress https://github.com/etianen/django-herokuapp/issues/9
+    #       test with slowloris https://github.com/gkbrk/slowloris
+    #       look into preboot https://devcenter.heroku.com/articles/preboot
+    defaultdb = f"postgres://{user}@{__DEF_HOST__}/{__APP_NAME__.replace('-','_')}"
+    SQLALCHEMY_DATABASE_URI = getenv("DATABASE_URL", defaultdb)
+
+    # max 20 connections per dyno spread over 4 workers
+    # look into a Null pool with pgbouncer
+    # https://devcenter.heroku.com/articles/python-concurrency-and-database-connections
+    SQLALCHEMY_POOL_SIZE = 3
+    SQLALCHEMY_MAX_OVERFLOW = 2
+
     HOST = "0.0.0.0"
 
 
@@ -117,16 +202,24 @@ class Custom(Production):
 
 
 class Development(Config):
+    base = "sqlite:///{}?check_same_thread=False"
+    SQLALCHEMY_DATABASE_URI = base.format(p.join(PARENT_DIR, "app.db"))
     DEBUG = True
     DEBUG_MEMCACHE = False
     CACHE_DEFAULT_TIMEOUT = get_seconds(hours=8)
     CHUNK_SIZE = 128
     ROW_LIMIT = 16
+    SQLALCHEMY_TRACK_MODIFICATIONS = True
     OAUTHLIB_INSECURE_TRANSPORT = True
     RQ_DASHBOARD_DEBUG = True
 
 
+class Ngrok(Development):
+    QB_REDIRECT_URI = f"https://nerevu.ngrok.io{Config.API_URL_PREFIX}/callback"
+
+
 class Test(Config):
+    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     DEBUG = True
     DEBUG_MEMCACHE = False
     TESTING = True

@@ -87,6 +87,7 @@ def create_app(config_mode=None, config_file=None):
         add_basic_auth(blueprint=rq, username=username, password=password)
         logger.info(f"Creating RQ-dashboard login for {username}")
 
+    app.register_blueprint(api)
     app.register_blueprint(rq, url_prefix=f"{prefix}/dashboard")
 
 
@@ -113,4 +114,5 @@ def create_app(config_mode=None, config_file=None):
 
 
 # put at bottom to avoid circular reference errors
+from app.api import blueprint as api  # noqa
 from rq_dashboard import blueprint as rq  # noqa

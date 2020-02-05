@@ -13,6 +13,7 @@ from flask import current_app as app
 from flask_script import Manager
 
 from app import create_app
+from app.api import transfer_orders
 
 BASEDIR = p.dirname(__file__)
 DEF_PORT = 5000
@@ -84,6 +85,14 @@ def lint(where, strict):
         check_call(["flake8"] + extra)
     except CalledProcessError as e:
         exit(e.returncode)
+
+
+@manager.option("-o", "--order-id", help="Order ID to add")
+def enqueue(order_id=None):
+    """Enqueue work to be done"""
+    with app.app_context():
+        response = transfer_orders(order_id, enqueue=True)
+        logger.debug(response)
 
 
 @manager.command
