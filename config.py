@@ -194,6 +194,7 @@ class Heroku(Production):
     DOMAIN = "herokuapp.com"
 
     if __PROD_SERVER__:
+        TALISMAN_SUBDOMAINS = True
         SERVER_NAME = f"{__SUB_DOMAIN__}.{DOMAIN}"
 
 
@@ -201,6 +202,7 @@ class Custom(Production):
     DOMAIN = "nerevu.com"
 
     if __PROD_SERVER__:
+        TALISMAN_SUBDOMAINS = True
         SERVER_NAME = f"{__SUB_DOMAIN__}.{DOMAIN}"
 
 
